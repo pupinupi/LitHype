@@ -19,34 +19,31 @@ function selectEmoji(el){
 }
 
 // Вход в комнату
-function joinRoom(){
+async function joinRoom(){
   name = document.getElementById("name").value.trim();
   roomCode = document.getElementById("room").value.trim();
-  if(!name || !roomCode || !emoji) return alert("Заполни всё");
+  if(!name || !roomCode || !emoji) return alert("Заполни всё!");
 
-  const roomRef = db.collection("rooms").doc(roomCode);
+  const roomRef = doc(db, "rooms", roomCode);
 
-  roomRef.get().then(doc=>{
-    if(!doc.exists){
-      roomRef.set({players:{}, turnIndex:0}).then(() => addPlayer(roomRef));
-    } else addPlayer(roomRef);
-  }).catch(err => alert("Ошибка: " + err.message));
-}
-
-// Добавление игрока
-function addPlayer(roomRef){
-  roomRef.update({[`players.${playerId}`]: {name, emoji, pos:0, hype:0, skip:false}})
-  .then(()=>{
+  try{
+    const docSnap = await getDoc(roomRef);
+    if(!docSnap.exists()){
+      await setDoc(roomRef, {players:{}, turnIndex:0});
+    }
+    await updateDoc(roomRef, {[`players.${playerId}`]: {name, emoji, pos:0, hype:0, skip:false}});
     document.getElementById("lobby").style.display="none";
     document.getElementById("game").style.display="block";
     listenRoom(roomRef);
-  }).catch(err => alert(err.message));
+  } catch(e){
+    alert("Ошибка: "+e.message);
+  }
 }
 
 // Слушаем комнату
 function listenRoom(roomRef){
-  roomRef.onSnapshot(doc=>{
-    const data = doc.data();
+  onSnapshot(roomRef, (docSnap)=>{
+    const data = docSnap.data();
     players = data.players;
     turnIndex = data.turnIndex;
     renderPlayers();
@@ -98,13 +95,17 @@ function rollDice(){
 }
 
 // Движение и обработка клеток
-function movePlayer(steps){
-  const roomRef = db.collection("rooms").doc(roomCode);
+async function movePlayer(steps){
+  const roomRef = doc(db, "rooms", roomCode);
   let p = players[playerId];
   if(!p) return;
+
   if(p.skip){
     alert("Пропуск хода!");
-    roomRef.update({[`players.${playerId}.skip`]: false, turnIndex: (turnIndex+1)%Object.keys(players).length});
+    await updateDoc(roomRef, {
+      [`players.${playerId}.skip`]: false,
+      turnIndex: (turnIndex+1)%Object.keys(players).length
+    });
     return;
   }
 
@@ -114,7 +115,7 @@ function movePlayer(steps){
   let cellHype = getCellHype(newPos);
   let newHype = Math.max(p.hype + cellHype, 0);
 
-  roomRef.update({
+  await updateDoc(roomRef, {
     [`players.${playerId}.pos`]: newPos,
     [`players.${playerId}.hype`]: newHype,
     turnIndex: (turnIndex+1)%Object.keys(players).length
@@ -163,8 +164,8 @@ function showRisk(){
 
 // Пропуск хода
 function skipTurn(){
-  const roomRef = db.collection("rooms").doc(roomCode);
-  roomRef.update({[`players.${playerId}.skip`]: true});
+  const roomRef = doc(db, "rooms", roomCode);
+  updateDoc(roomRef, {[`players.${playerId}.skip`]: true});
   showModal("Пропуск!", "Следующий ход пропускается", "yellow");
 }
 
