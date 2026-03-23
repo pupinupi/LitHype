@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>LitHype: Путь к хайпу</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<!-- Лобби -->
+<div id="lobby">
+  <h1>Лобби</h1>
+  <input type="text" id="name" placeholder="Имя">
+  <input type="text" id="room" placeholder="Код комнаты">
+  <div id="emojiSelect">
+    <span onclick="selectEmoji(this)">🚗</span>
+    <span onclick="selectEmoji(this)">🔥</span>
+    <span onclick="selectEmoji(this)">💎</span>
+    <span onclick="selectEmoji(this)">🚀</span>
+  </div>
+  <button onclick="joinRoom()">Войти в комнату</button>
+</div>
+
+<!-- Игра -->
+<div id="game" style="display:none;">
+  <h2 id="turn"></h2>
+  <div id="boardContainer">
+    <img src="board.jpg" alt="Поле" id="board">
+    <div id="players"></div>
+  </div>
+  <div id="hypeBar">
+    <div id="hypeFill"></div>
+    <span id="hypeText">Хайп: 0 / 70</span>
+  </div>
+  <button onclick="rollDice()">Бросить кубик</button>
+</div>
+
+<!-- Модалка событий -->
+<div id="eventModal" class="modal" style="display:none;"></div>
+
+<!-- Firebase SDK -->
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/12.11.0/firebase-app.js";
+import { getFirestore } from "https://www.gstatic.com/firebasejs/12.11.0/firebase-firestore.js";
+
+// Firebase config
+const firebaseConfig = {
+  apiKey: "AIzaSyB1ylKDzgEFLxyef5dyD_TD6QKlc6EDm_Y",
+  authDomain: "lithype-12c30.firebaseapp.com",
+  projectId: "lithype-12c30",
+  storageBucket: "lithype-12c30.firebasestorage.app",
+  messagingSenderId: "734689233128",
+  appId: "1:734689233128:web:302484bff4b55b355fa15d"
+};
+
+// Инициализация Firebase
+const app = initializeApp(firebaseConfig);
+window.db = getFirestore(app); // глобальная переменная для script.js
+</script>
+
+<!-- Логика игры -->
+<script src="script.js"></script>
+</body>
+</html>
