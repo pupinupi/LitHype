@@ -19,7 +19,7 @@
     <span onclick="selectEmoji(this)">💎</span>
     <span onclick="selectEmoji(this)">🚀</span>
   </div>
-  <button onclick="joinRoom()">Войти в комнату</button>
+  <button id="joinBtn">Войти в комнату</button>
 </div>
 
 <!-- Игра -->
@@ -42,7 +42,7 @@
 <!-- Firebase SDK -->
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/12.11.0/firebase-app.js";
-import { getFirestore } from "https://www.gstatic.com/firebasejs/12.11.0/firebase-firestore.js";
+import { getFirestore, doc, getDoc, setDoc, updateDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/12.11.0/firebase-firestore.js";
 
 // Firebase config
 const firebaseConfig = {
@@ -61,5 +61,10 @@ window.db = getFirestore(app); // глобальная переменная дл
 
 <!-- Логика игры -->
 <script src="script.js"></script>
+<script>
+  // Привязываем кнопку к функции
+  document.getElementById("joinBtn").addEventListener("click", joinRoom);
+</script>
+
 </body>
 </html>
