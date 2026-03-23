@@ -3,90 +3,204 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>LitHype: Путь к хайпу</title>
+<title>LitHype</title>
 <link rel="stylesheet" href="style.css">
 </head>
 <body>
 
-<!-- Лобби -->
+<!-- ЛОББИ -->
 <div id="lobby">
   <h1>Лобби</h1>
-  <input type="text" id="name" placeholder="Имя">
-  <input type="text" id="room" placeholder="Код комнаты">
+
+  <input id="name" placeholder="Имя">
+  <input id="room" placeholder="Код комнаты">
+
   <div id="emojiSelect">
-    <span onclick="selectEmoji(this)">🚗</span>
-    <span onclick="selectEmoji(this)">🔥</span>
-    <span onclick="selectEmoji(this)">💎</span>
-    <span onclick="selectEmoji(this)">🚀</span>
+    <span>🚗</span>
+    <span>🔥</span>
+    <span>💎</span>
+    <span>🚀</span>
   </div>
-  <button onclick="joinRoom()">Войти в комнату</button>
+
+  <button id="joinBtn">Войти</button>
 </div>
 
-<!-- Игра -->
+<!-- ИГРА -->
 <div id="game" style="display:none;">
   <h2 id="turn"></h2>
+
   <div id="boardContainer">
-    <img src="board.jpg" alt="Поле" id="board">
+    <img src="board.jpg" id="board">
     <div id="players"></div>
   </div>
+
   <div id="hypeBar">
     <div id="hypeFill"></div>
-    <span id="hypeText">Хайп: 0 / 70</span>
   </div>
-  <button onclick="rollDice()">Бросить кубик</button>
+  <div id="hypeText">0 / 70</div>
+
+  <button id="rollBtn">🎲 Бросить кубик</button>
 </div>
 
-<!-- Модалка событий -->
 <div id="eventModal" class="modal" style="display:none;"></div>
 
-<!-- Firebase SDK -->
-<script type="module">
-import { initializeApp } from "https://www.gstatic.com/firebasejs/12.11.0/firebase-app.js";
-import { getFirestore, doc, getDoc, setDoc, updateDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/12.11.0/firebase-firestore.js";
+<!-- Firebase (СТАБИЛЬНЫЙ CDN) -->
+<script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+<script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
 
-// Firebase конфиг
-const firebaseConfig = {
+<script>
+// CONFIG
+firebase.initializeApp({
   apiKey: "AIzaSyB1ylKDzgEFLxyef5dyD_TD6QKlc6EDm_Y",
   authDomain: "lithype-12c30.firebaseapp.com",
-  projectId: "lithype-12c30",
-  storageBucket: "lithype-12c30.firebasestorage.app",
-  messagingSenderId: "734689233128",
-  appId: "1:734689233128:web:302484bff4b55b355fa15d"
+  projectId: "lithype-12c30"
+});
+
+const db = firebase.firestore();
+
+// ПЕРЕМЕННЫЕ
+let playerId = Date.now().toString();
+let players = {};
+let turnIndex = 0;
+let roomCode = "";
+
+// ВЫБОР ФИШКИ
+let selectedEmoji = null;
+
+document.querySelectorAll("#emojiSelect span").forEach(el=>{
+  el.onclick = () => {
+    document.querySelectorAll("#emojiSelect span").forEach(e=>e.classList.remove("selected"));
+    el.classList.add("selected");
+    selectedEmoji = el.innerText;
+  };
+});
+
+// ВХОД
+document.getElementById("joinBtn").onclick = async function(){
+
+  const name = document.getElementById("name").value.trim();
+  roomCode = document.getElementById("room").value.trim();
+
+  if(!name || !roomCode || !selectedEmoji){
+    alert("Заполни всё!");
+    return;
+  }
+
+  const roomRef = db.collection("rooms").doc(roomCode);
+
+  let doc = await roomRef.get();
+
+  if(!doc.exists){
+    await roomRef.set({
+      players: {},
+      turnIndex: 0
+    });
+  }
+
+  await roomRef.update({
+    ["players."+playerId]: {
+      name: name,
+      emoji: selectedEmoji,
+      pos: 0,
+      hype: 0
+    }
+  });
+
+  document.getElementById("lobby").style.display = "none";
+  document.getElementById("game").style.display = "block";
+
+  listenRoom(roomRef);
 };
 
-// Инициализация Firebase
-const app = initializeApp(firebaseConfig);
-window.db = getFirestore(app); // глобальная переменная для script.js
+// СЛУШАЕМ КОМНАТУ
+function listenRoom(roomRef){
+  roomRef.onSnapshot(doc=>{
+    const data = doc.data();
+    if(!data) return;
 
-// Выбор фишки
-window.selectEmoji = function(el){
-  document.querySelectorAll("#emojiSelect span").forEach(e=>e.classList.remove("selected"));
-  el.classList.add("selected");
+    players = data.players;
+    turnIndex = data.turnIndex;
+
+    renderPlayers();
+    updateUI();
+  });
 }
 
-// Вход в комнату
-window.joinRoom = async function(){
-  const name = document.getElementById("name").value.trim();
-  const roomCode = document.getElementById("room").value.trim();
-  const emojiEl = document.querySelector("#emojiSelect .selected");
-  if(!name || !roomCode || !emojiEl) return alert("Заполни все поля и выбери фишку!");
-  const emoji = emojiEl.innerText;
+// ОТРИСОВКА
+const coords = [
+ {x:20,y:260},{x:70,y:260},{x:120,y:260},{x:170,y:260},{x:220,y:260},
+ {x:270,y:260},{x:270,y:210},{x:270,y:160},{x:270,y:110},{x:270,y:60},
+ {x:220,y:60},{x:170,y:60},{x:120,y:60},{x:70,y:60},{x:20,y:60},
+ {x:20,y:110},{x:20,y:160},{x:20,y:210},{x:70,y:210},{x:120,y:210}
+];
 
-  const roomRef = doc(db, "rooms", roomCode);
-  try{
-    const docSnap = await getDoc(roomRef);
-    if(!docSnap.exists()) await setDoc(roomRef, {players:{}, turnIndex:0});
-    await updateDoc(roomRef, {[`players.${Date.now()}`]: {name, emoji, pos:0, hype:0, skip:false}});
-    document.getElementById("lobby").style.display = "none";
-    document.getElementById("game").style.display = "block";
-  }catch(e){
-    alert("Ошибка: " + e.message);
+function renderPlayers(){
+  const div = document.getElementById("players");
+  div.innerHTML = "";
+
+  Object.keys(players).forEach(id=>{
+    const p = players[id];
+
+    const el = document.createElement("div");
+    el.className = "token";
+    el.innerText = p.emoji;
+
+    const pos = coords[p.pos];
+    el.style.left = pos.x+"px";
+    el.style.top = pos.y+"px";
+
+    div.appendChild(el);
+  });
+}
+
+// UI
+function updateUI(){
+  const ids = Object.keys(players);
+  if(ids.length === 0) return;
+
+  const current = players[ids[turnIndex]];
+  document.getElementById("turn").innerText = "Ход: "+current.name;
+
+  const me = players[playerId];
+  if(me){
+    document.getElementById("hypeText").innerText = me.hype+" / 70";
+    document.getElementById("hypeFill").style.width = (me.hype/70*100)+"%";
   }
 }
-</script>
 
-<!-- Подключаем JS с логикой игры -->
-<script src="script.js"></script>
+// КУБИК
+document.getElementById("rollBtn").onclick = async function(){
+
+  const ids = Object.keys(players);
+  if(ids[turnIndex] !== playerId){
+    alert("Не твой ход");
+    return;
+  }
+
+  const dice = Math.floor(Math.random()*6)+1;
+
+  let p = players[playerId];
+  let newPos = Math.min(p.pos + dice, 19);
+
+  let hype = p.hype + getCell(newPos);
+  if(hype < 0) hype = 0;
+
+  const roomRef = db.collection("rooms").doc(roomCode);
+
+  await roomRef.update({
+    ["players."+playerId+".pos"]: newPos,
+    ["players."+playerId+".hype"]: hype,
+    turnIndex: (turnIndex+1)%Object.keys(players).length
+  });
+};
+
+// КЛЕТКИ
+function getCell(pos){
+  const rules = [0,3,2,0,0,2,0,3,5,-10,-8,3,0,3,0,2,0,8,-10,4];
+  return rules[pos];
+}
+
+</script>
 
 </body>
 </html>
