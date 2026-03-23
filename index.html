@@ -19,7 +19,7 @@
     <span onclick="selectEmoji(this)">💎</span>
     <span onclick="selectEmoji(this)">🚀</span>
   </div>
-  <button id="joinBtn">Войти в комнату</button>
+  <button onclick="joinRoom()">Войти в комнату</button>
 </div>
 
 <!-- Игра -->
@@ -44,7 +44,7 @@
 import { initializeApp } from "https://www.gstatic.com/firebasejs/12.11.0/firebase-app.js";
 import { getFirestore, doc, getDoc, setDoc, updateDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/12.11.0/firebase-firestore.js";
 
-// Firebase config
+// Firebase конфиг
 const firebaseConfig = {
   apiKey: "AIzaSyB1ylKDzgEFLxyef5dyD_TD6QKlc6EDm_Y",
   authDomain: "lithype-12c30.firebaseapp.com",
@@ -57,14 +57,36 @@ const firebaseConfig = {
 // Инициализация Firebase
 const app = initializeApp(firebaseConfig);
 window.db = getFirestore(app); // глобальная переменная для script.js
+
+// Выбор фишки
+window.selectEmoji = function(el){
+  document.querySelectorAll("#emojiSelect span").forEach(e=>e.classList.remove("selected"));
+  el.classList.add("selected");
+}
+
+// Вход в комнату
+window.joinRoom = async function(){
+  const name = document.getElementById("name").value.trim();
+  const roomCode = document.getElementById("room").value.trim();
+  const emojiEl = document.querySelector("#emojiSelect .selected");
+  if(!name || !roomCode || !emojiEl) return alert("Заполни все поля и выбери фишку!");
+  const emoji = emojiEl.innerText;
+
+  const roomRef = doc(db, "rooms", roomCode);
+  try{
+    const docSnap = await getDoc(roomRef);
+    if(!docSnap.exists()) await setDoc(roomRef, {players:{}, turnIndex:0});
+    await updateDoc(roomRef, {[`players.${Date.now()}`]: {name, emoji, pos:0, hype:0, skip:false}});
+    document.getElementById("lobby").style.display = "none";
+    document.getElementById("game").style.display = "block";
+  }catch(e){
+    alert("Ошибка: " + e.message);
+  }
+}
 </script>
 
-<!-- Логика игры -->
+<!-- Подключаем JS с логикой игры -->
 <script src="script.js"></script>
-<script>
-  // Привязываем кнопку к функции
-  document.getElementById("joinBtn").addEventListener("click", joinRoom);
-</script>
 
 </body>
 </html>
